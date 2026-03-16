@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Timer</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #000;
+    --surface: #0a0a0a;
+    --border: rgba(255,255,255,0.07);
+    --text: #ffffff;
+    --text-muted: rgba(255,255,255,0.35);
+    --text-dim: rgba(255,255,255,0.12);
+    --accent: #ffffff;
+    --btn-primary-bg: #fff;
+    --btn-primary-text: #000;
+    --btn-secondary-border: rgba(255,255,255,0.25);
+    --btn-secondary-text: rgba(255,255,255,0.8);
+    --progress-track: rgba(255,255,255,0.07);
+    --progress-fill: #fff;
+    --digit-font: 'Bebas Neue', 'Share Tech Mono', monospace;
+    --label-font: 'Barlow', sans-serif;
+  }
+
+  body.light {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --border: rgba(0,0,0,0.08);
+    --text: #0a0a0a;
+    --text-muted: rgba(0,0,0,0.35);
+    --text-dim: rgba(0,0,0,0.1);
+    --accent: #0a0a0a;
+    --btn-primary-bg: #0a0a0a;
+    --btn-primary-text: #fff;
+    --btn-secondary-border: rgba(0,0,0,0.18);
+    --btn-secondary-text: rgba(0,0,0,0.7);
+    --progress-track: rgba(0,0,0,0.07);
+    --progress-fill: #0a0a0a;
+  }
+
+  html, body {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--label-font);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.4s ease, color 0.4s ease;
+    position: relative;
+  }
+
+  /* Subtle grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--text-dim) 1px, transparent 1px),
+      linear-gradient(90deg, var(--text-dim) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 1200px;
+    padding: 2rem;
+    gap: clamp(1.5rem, 3vh, 3rem);
+  }
+
+  /* Theme toggle */
+  .theme-bar {
+    position: fixed;
+    top: 1.5rem;
+    right: 1.5rem;
+    display: flex;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 40px;
+    overflow: hidden;
+    z-index: 100;
+    background: var(--surface);
+  }
+  .theme-btn {
+    background: none;
+    border: none;
+    padding: 8px 20px;
+    font-family: var(--label-font);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+  }
+  .theme-btn.active {
+    background: var(--btn-primary-bg);
+    color: var(--btn-primary-text);
+  }
+
+  /* Title */
+  .title {
+    font-family: var(--label-font);
+    font-size: clamp(10px, 1.2vw, 13px);
+    font-weight: 400;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  /* Main clock display */
+  .clock-display {
+    display: flex;
+    align-items: flex-end;
+    gap: clamp(4px, 1vw, 16px);
+    line-height: 1;
+  }
+
+  .unit {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .digits {
+    font-family: var(--digit-font);
+    font-size: clamp(80px, 14vw, 220px);
+    font-weight: 400;
+    color: var(--text);
+    letter-spacing: -2px;
+    line-height: 0.9;
+    transition: color 0.4s;
+    font-variant-numeric: tabular-nums;
+    min-width: 2ch;
+    text-align: center;
+  }
+
+  .unit-label {
+    font-size: clamp(9px, 0.9vw, 12px);
+    font-weight: 400;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .sep {
+    font-family: var(--digit-font);
+    font-size: clamp(60px, 10vw, 160px);
+    color: var(--text);
+    line-height: 1;
+    padding-bottom: clamp(20px, 3vw, 42px);
+    transition: opacity 0.15s ease, color 0.4s;
+    user-select: none;
+  }
+  .sep.blink { opacity: 0.1; }
+
+  /* Progress */
+  .progress-wrap {
+    width: clamp(280px, 60vw, 700px);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .progress-track {
+    height: 2px;
+    background: var(--progress-track);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--progress-fill);
+    border-radius: 2px;
+    width: 0%;
+    transition: width 0.6s linear;
+  }
+  .progress-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+  }
+
+  /* Setter */
+  .setter {
+    display: flex;
+    align-items: center;
+    gap: clamp(10px, 2vw, 32px);
+    transition: opacity 0.3s;
+  }
+  .setter.disabled {
+    opacity: 0.25;
+    pointer-events: none;
+  }
+  .set-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  .set-label {
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 400;
+  }
+  .set-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .adj-btn {
+    width: clamp(32px, 3vw, 42px);
+    height: clamp(32px, 3vw, 42px);
+    border-radius: 50%;
+    border: 1px solid var(--btn-secondary-border);
+    background: none;
+    color: var(--text);
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, transform 0.1s;
+    font-family: var(--label-font);
+    font-weight: 300;
+  }
+  .adj-btn:hover { background: rgba(128,128,128,0.12); }
+  .adj-btn:active { transform: scale(0.9); }
+  .set-val {
+    font-family: var(--digit-font);
+    font-size: clamp(28px, 3.5vw, 48px);
+    min-width: 2ch;
+    text-align: center;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .set-divider {
+    font-family: var(--digit-font);
+    font-size: clamp(24px, 3vw, 40px);
+    color: var(--text-muted);
+    padding-bottom: 4px;
+    user-select: none;
+  }
+
+  /* Controls */
+  .controls {
+    display: flex;
+    gap: clamp(10px, 1.5vw, 20px);
+    align-items: center;
+  }
+  .ctrl-btn {
+    padding: clamp(10px, 1.2vw, 16px) clamp(24px, 3vw, 48px);
+    border-radius: 60px;
+    font-family: var(--label-font);
+    font-size: clamp(12px, 1vw, 14px);
+    font-weight: 500;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    border: 1px solid;
+    transition: background 0.2s, color 0.2s, transform 0.1s, opacity 0.2s;
+  }
+  .ctrl-btn:active { transform: scale(0.97); }
+  .ctrl-btn.primary {
+    background: var(--btn-primary-bg);
+    color: var(--btn-primary-text);
+    border-color: var(--btn-primary-bg);
+  }
+  .ctrl-btn.secondary {
+    background: transparent;
+    color: var(--btn-secondary-text);
+    border-color: var(--btn-secondary-border);
+  }
+  .ctrl-btn.secondary:hover { background: rgba(128,128,128,0.1); }
+
+  /* Done */
+  .done-msg {
+    font-family: var(--digit-font);
+    font-size: clamp(18px, 2vw, 28px);
+    letter-spacing: 8px;
+    text-transform: uppercase;
+    color: var(--text);
+    animation: flash 1s infinite alternate;
+    display: none;
+  }
+  @keyframes flash {
+    from { opacity: 0.15; }
+    to { opacity: 1; }
+  }
+
+  /* Responsive stacking */
+  @media (max-width: 500px) {
+    .digits { font-size: 68px; }
+    .sep { font-size: 50px; padding-bottom: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="theme-bar">
+  <button class="theme-btn active" id="btn-dark" onclick="setTheme('dark')">Dark</button>
+  <button class="theme-btn" id="btn-light" onclick="setTheme('light')">Light</button>
+</div>
+
+<div class="container">
+  <div class="title">Countdown Timer</div>
+
+  <div class="clock-display">
+    <div class="unit">
+      <div class="digits" id="disp-h">00</div>
+      <div class="unit-label">Hours</div>
+    </div>
+    <div class="sep" id="col1">:</div>
+    <div class="unit">
+      <div class="digits" id="disp-m">00</div>
+      <div class="unit-label">Minutes</div>
+    </div>
+    <div class="sep" id="col2">:</div>
+    <div class="unit">
+      <div class="digits" id="disp-s">00</div>
+      <div class="unit-label">Seconds</div>
+    </div>
+  </div>
+
+  <div class="progress-wrap">
+    <div class="progress-track">
+      <div class="progress-fill" id="prog"></div>
+    </div>
+    <div class="progress-labels">
+      <span id="elapsed-label">0:00:00 elapsed</span>
+      <span id="remain-label">—</span>
+    </div>
+  </div>
+
+  <div class="setter" id="setter">
+    <div class="set-block">
+      <div class="set-label">Hours</div>
+      <div class="set-row">
+        <button class="adj-btn" onclick="adj('h',-1)">−</button>
+        <div class="set-val" id="set-h">0</div>
+        <button class="adj-btn" onclick="adj('h',1)">+</button>
+      </div>
+    </div>
+    <div class="set-divider">:</div>
+    <div class="set-block">
+      <div class="set-label">Minutes</div>
+      <div class="set-row">
+        <button class="adj-btn" onclick="adj('m',-1)">−</button>
+        <div class="set-val" id="set-m">5</div>
+        <button class="adj-btn" onclick="adj('m',1)">+</button>
+      </div>
+    </div>
+    <div class="set-divider">:</div>
+    <div class="set-block">
+      <div class="set-label">Seconds</div>
+      <div class="set-row">
+        <button class="adj-btn" onclick="adj('s',-1)">−</button>
+        <div class="set-val" id="set-s">0</div>
+        <button class="adj-btn" onclick="adj('s',1)">+</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="done-msg" id="done-msg">Time's Up</div>
+
+  <div class="controls">
+    <button class="ctrl-btn primary" id="btn-start" onclick="startTimer()">Start</button>
+    <button class="ctrl-btn secondary" id="btn-pause" onclick="pauseTimer()" style="display:none">Pause</button>
+    <button class="ctrl-btn secondary" onclick="resetTimer()">Reset</button>
+  </div>
+</div>
+
+<script>
+  let setH = 0, setM = 5, setS = 0;
+  let remaining = 0, total = 0;
+  let interval = null, running = false, colonOn = true;
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function fmtTime(sec) {
+    let h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+    return h + ':' + pad(m) + ':' + pad(s);
+  }
+
+  function adj(unit, delta) {
+    if (running) return;
+    if (unit === 'h') { setH = Math.max(0, Math.min(23, setH + delta)); document.getElementById('set-h').textContent = setH; }
+    else if (unit === 'm') { setM = Math.max(0, Math.min(59, setM + delta)); document.getElementById('set-m').textContent = setM; }
+    else { setS = Math.max(0, Math.min(59, setS + delta)); document.getElementById('set-s').textContent = setS; }
+    remaining = setH * 3600 + setM * 60 + setS;
+    renderDisplay();
+  }
+
+  function renderDisplay() {
+    let h = Math.floor(remaining / 3600);
+    let m = Math.floor((remaining % 3600) / 60);
+    let s = remaining % 60;
+    document.getElementById('disp-h').textContent = pad(h);
+    document.getElementById('disp-m').textContent = pad(m);
+    document.getElementById('disp-s').textContent = pad(s);
+
+    let elapsed = total - remaining;
+    let pct = total > 0 ? (elapsed / total * 100) : 0;
+    document.getElementById('prog').style.width = pct + '%';
+    document.getElementById('elapsed-label').textContent = fmtTime(elapsed) + ' elapsed';
+    document.getElementById('remain-label').textContent = remaining > 0 ? fmtTime(remaining) + ' remaining' : '—';
+
+    document.title = remaining > 0 ? fmtTime(remaining) + ' — Timer' : 'Timer';
+  }
+
+  function startTimer() {
+    if (running) return;
+    if (remaining === 0) { remaining = setH * 3600 + setM * 60 + setS; total = remaining; }
+    if (remaining === 0) return;
+    if (total === 0) total = remaining;
+    running = true;
+    document.getElementById('btn-start').style.display = 'none';
+    document.getElementById('btn-pause').style.display = '';
+    document.getElementById('setter').classList.add('disabled');
+    document.getElementById('done-msg').style.display = 'none';
+    interval = setInterval(tick, 1000);
+  }
+
+  function tick() {
+    if (remaining > 0) { remaining--; renderDisplay(); }
+    colonOn = !colonOn;
+    document.getElementById('col1').classList.toggle('blink', !colonOn);
+    document.getElementById('col2').classList.toggle('blink', !colonOn);
+    if (remaining === 0) {
+      clearInterval(interval); running = false;
+      document.getElementById('done-msg').style.display = '';
+      document.getElementById('btn-pause').style.display = 'none';
+      document.getElementById('btn-start').style.display = '';
+      document.getElementById('btn-start').textContent = 'Start';
+      document.getElementById('col1').classList.remove('blink');
+      document.getElementById('col2').classList.remove('blink');
+      document.title = "⏰ Time's Up — Timer";
+      playDoneSound();
+    }
+  }
+
+  function pauseTimer() {
+    if (!running) return;
+    clearInterval(interval); running = false;
+    document.getElementById('btn-pause').style.display = 'none';
+    document.getElementById('btn-start').style.display = '';
+    document.getElementById('btn-start').textContent = 'Resume';
+    document.getElementById('col1').classList.remove('blink');
+    document.getElementById('col2').classList.remove('blink');
+  }
+
+  function resetTimer() {
+    clearInterval(interval); running = false;
+    remaining = 0; total = 0;
+    renderDisplay();
+    document.getElementById('col1').classList.remove('blink');
+    document.getElementById('col2').classList.remove('blink');
+    document.getElementById('btn-start').style.display = '';
+    document.getElementById('btn-start').textContent = 'Start';
+    document.getElementById('btn-pause').style.display = 'none';
+    document.getElementById('setter').classList.remove('disabled');
+    document.getElementById('done-msg').style.display = 'none';
+    document.title = 'Timer';
+  }
+
+  function setTheme(t) {
+    document.body.className = t === 'light' ? 'light' : '';
+    document.getElementById('btn-dark').classList.toggle('active', t === 'dark');
+    document.getElementById('btn-light').classList.toggle('active', t === 'light');
+  }
+
+  renderDisplay();
+
+  function playDoneSound() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const masterGain = ctx.createGain();
+      masterGain.connect(ctx.destination);
+
+      function playTone(freq, startTime, duration, peakGain) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(masterGain);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, startTime);
+        gain.gain.setValueAtTime(0, startTime);
+        gain.gain.linearRampToValueAtTime(peakGain, startTime + 0.06);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+        osc.start(startTime);
+        osc.stop(startTime + duration);
+      }
+
+      const t = ctx.currentTime;
+      // Three rising chime notes — C5, E5, G5 — spaced smoothly over ~2s
+      playTone(523.25, t,        1.5,  0.28);
+      playTone(659.25, t + 0.55, 1.3,  0.22);
+      playTone(783.99, t + 1.05, 1.1,  0.18);
+
+      // Soft harmonic shimmer on the last note
+      playTone(1567.98, t + 1.05, 0.9, 0.06);
+    } catch(e) {}
+  }
+</script>
+</body>
+</html>
