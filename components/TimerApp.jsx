@@ -5,10 +5,11 @@ import { playDoneSound } from '@/lib/sound';
 import { formatTime, pad, splitTime, toSeconds } from '@/lib/time';
 
 const MIN_MAX = {
-  h: [0, 23],
+  h: [0, 24],
   m: [0, 59],
   s: [0, 59],
 };
+const MAX_TOTAL_SECONDS = 24 * 60 * 60;
 
 export default function TimerApp() {
   const [theme, setTheme] = useState('dark');
@@ -32,15 +33,57 @@ export default function TimerApp() {
     setRemaining(nextSeconds);
   };
 
+  const clampSetTime = (nextSetTime) => {
+    const normalized = {
+      h: Number.isFinite(nextSetTime.h) ? Math.trunc(nextSetTime.h) : 0,
+      m: Number.isFinite(nextSetTime.m) ? Math.trunc(nextSetTime.m) : 0,
+      s: Number.isFinite(nextSetTime.s) ? Math.trunc(nextSetTime.s) : 0,
+    };
+
+    normalized.h = Math.max(MIN_MAX.h[0], Math.min(MIN_MAX.h[1], normalized.h));
+    normalized.m = Math.max(MIN_MAX.m[0], Math.min(MIN_MAX.m[1], normalized.m));
+    normalized.s = Math.max(MIN_MAX.s[0], Math.min(MIN_MAX.s[1], normalized.s));
+
+    let totalSeconds = toSeconds(normalized);
+    if (totalSeconds > MAX_TOTAL_SECONDS) {
+      totalSeconds = MAX_TOTAL_SECONDS;
+      normalized.h = 24;
+      normalized.m = 0;
+      normalized.s = 0;
+    }
+
+    if (normalized.h === 24) {
+      normalized.m = 0;
+      normalized.s = 0;
+    }
+
+    return normalized;
+  };
+
   const adjust = (unit, delta) => {
     if (running) return;
 
-    const [min, max] = MIN_MAX[unit];
     setSetTime((prev) => {
-      const next = {
+      const next = clampSetTime({
         ...prev,
-        [unit]: Math.max(min, Math.min(max, prev[unit] + delta)),
-      };
+        [unit]: prev[unit] + delta,
+      });
+      updateFromSetTime(next);
+      return next;
+    });
+  };
+
+  const handleSetInput = (unit, value) => {
+    if (running) return;
+
+    const parsed = value === '' ? 0 : Number.parseInt(value, 10);
+    const nextValue = Number.isNaN(parsed) ? 0 : parsed;
+
+    setSetTime((prev) => {
+      const next = clampSetTime({
+        ...prev,
+        [unit]: nextValue,
+      });
       updateFromSetTime(next);
       return next;
     });
@@ -187,7 +230,16 @@ export default function TimerApp() {
               <button className="adj-btn" onClick={() => adjust('h', -1)} type="button">
                 -
               </button>
-              <div className="set-val">{setTime.h}</div>
+              <input
+                className="set-input"
+                type="number"
+                min={MIN_MAX.h[0]}
+                max={MIN_MAX.h[1]}
+                value={setTime.h}
+                onChange={(e) => handleSetInput('h', e.target.value)}
+                disabled={setterDisabled}
+                aria-label="Set hours"
+              />
               <button className="adj-btn" onClick={() => adjust('h', 1)} type="button">
                 +
               </button>
@@ -202,7 +254,16 @@ export default function TimerApp() {
               <button className="adj-btn" onClick={() => adjust('m', -1)} type="button">
                 -
               </button>
-              <div className="set-val">{setTime.m}</div>
+              <input
+                className="set-input"
+                type="number"
+                min={MIN_MAX.m[0]}
+                max={MIN_MAX.m[1]}
+                value={setTime.m}
+                onChange={(e) => handleSetInput('m', e.target.value)}
+                disabled={setterDisabled}
+                aria-label="Set minutes"
+              />
               <button className="adj-btn" onClick={() => adjust('m', 1)} type="button">
                 +
               </button>
@@ -217,7 +278,16 @@ export default function TimerApp() {
               <button className="adj-btn" onClick={() => adjust('s', -1)} type="button">
                 -
               </button>
-              <div className="set-val">{setTime.s}</div>
+              <input
+                className="set-input"
+                type="number"
+                min={MIN_MAX.s[0]}
+                max={MIN_MAX.s[1]}
+                value={setTime.s}
+                onChange={(e) => handleSetInput('s', e.target.value)}
+                disabled={setterDisabled}
+                aria-label="Set seconds"
+              />
               <button className="adj-btn" onClick={() => adjust('s', 1)} type="button">
                 +
               </button>

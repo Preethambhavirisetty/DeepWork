@@ -263,13 +263,37 @@ body {
   transform: scale(0.9);
 }
 
-.set-val {
+.set-input {
   font-family: var(--digit-font);
   font-size: clamp(28px, 3.5vw, 48px);
   min-width: 2ch;
+  width: 2.7ch;
   text-align: center;
   color: var(--text);
   font-variant-numeric: tabular-nums;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  outline: none;
+}
+
+.set-input:focus {
+  border-color: var(--btn-secondary-border);
+  background: rgba(128, 128, 128, 0.08);
+}
+
+.set-input:disabled {
+  cursor: not-allowed;
+}
+
+.set-input::-webkit-outer-spin-button,
+.set-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.set-input[type='number'] {
+  -moz-appearance: textfield;
 }
 
 .set-divider {
